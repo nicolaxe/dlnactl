@@ -1,5 +1,5 @@
 [project]
-name = "simple-dlna"
+name = "dlnactl"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -9,4 +9,4 @@ dependencies = [
 ]
 
 [project.scripts]
-mini-dlna = "mini_dlna.cli:main"
+dlnactl = "dlnactl.cli:main"

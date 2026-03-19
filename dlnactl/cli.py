@@ -24,7 +24,7 @@ logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
 # Set up argument parsing
 parser = argparse.ArgumentParser(
-                    prog='mini-dlna',
+                    prog='dlnactl',
                     description='A simple CLI DLNA remote/server')
 
 parser.add_argument('-f', '--filename', type=str, help='media file to serve')
