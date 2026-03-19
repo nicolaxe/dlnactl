@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "async-upnp-client>=0.46.2",
+    "rich>=14.3.3",
 ]
 
 [project.scripts]
