@@ -1,9 +1,9 @@
-import sys
-import termios
-import tty
+import asyncio
 import asyncio
 import logging
 
+from prompt_toolkit.input import create_input
+from prompt_toolkit.keys import Keys
 from async_upnp_client.profiles.dlna import DmrDevice, TransportState
 from async_upnp_client.client import UpnpDevice
 from async_upnp_client.aiohttp import AiohttpRequester, AiohttpNotifyServer
@@ -121,28 +121,51 @@ class DLNADeviceWrapper:
             case '_':
                 await self.change_volume(-10)
 
+    # async def key_listener(self):
+    #     if self.device is None:
+    #         raise RuntimeError
+    #     fd = sys.stdin.fileno()
+    #     old = termios.tcgetattr(fd)
+    #     tty.setcbreak(fd)
+
+    #     loop = asyncio.get_event_loop()
+
+    #     try:
+    #         while True:
+    #             ch = await loop.run_in_executor(None, sys.stdin.read, 1)
+    #             if ch == 'q':
+    #                 if self.stop_on_quit:
+    #                     await self.device.async_stop()
+    #                 await self.device.async_unsubscribe_services()
+    #                 await self.event_server.async_stop_server()
+    #                 self.wait_task.set()
+    #                 return
+    #             await self.handle_key(ch)
+    #     finally:
+    #         termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
     async def key_listener(self):
         if self.device is None:
             raise RuntimeError
-        fd = sys.stdin.fileno()
-        old = termios.tcgetattr(fd)
-        tty.setcbreak(fd)
+        inp = create_input()
 
-        loop = asyncio.get_event_loop()
-
-        try:
+        with inp.raw_mode():
             while True:
-                ch = await loop.run_in_executor(None, sys.stdin.read, 1)
-                if ch == 'q':
-                    if self.stop_on_quit:
-                        await self.device.async_stop()
-                    await self.device.async_unsubscribe_services()
-                    await self.event_server.async_stop_server()
-                    self.wait_task.set()
-                    return
-                await self.handle_key(ch)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+                keys = inp.read_keys()
+
+                for key in keys:
+                    if key.key in ['q', Keys.ControlC]:
+                        await self.device.async_unsubscribe_services()
+                        await self.event_server.async_stop_server()
+                        self.wait_task.set()
+                        return
+                    else:
+                        await self.handle_key(key.key)
+                
+                await asyncio.sleep(0.05)
+
+
+
 
     def render_status(self):
         if self.device is None:
