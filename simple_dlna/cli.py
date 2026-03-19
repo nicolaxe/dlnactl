@@ -1,7 +1,6 @@
 import asyncio
 import async_upnp_client.search as upnp_search
 import logging
-import random
 import argparse
 
 from async_upnp_client.client_factory import UpnpFactory
@@ -10,8 +9,8 @@ from async_upnp_client.aiohttp import AiohttpRequester
 from rich.logging import RichHandler
 from pathlib import Path
 
-from device import DLNADeviceWrapper
-from server import DLNAServer
+from .device import DLNADeviceWrapper
+from .server import DLNAServer
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -71,7 +70,7 @@ def select_device(name: str|None) -> CaseInsensitiveDict|None:
     logger.error(f'Device "{name}" not found')  
     
 
-async def main():
+async def main_async():
     if args.filename and args.url:
         logger.error('Cannot set both --filename and --url at once')
         return
@@ -118,6 +117,9 @@ async def main():
 
     await wait_task.wait()
 
-    
 
-asyncio.run(main())
+def main():
+    asyncio.run(main_async())
+
+if __name__ == '__main__':  
+    main()

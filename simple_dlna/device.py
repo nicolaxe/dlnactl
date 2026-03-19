@@ -10,7 +10,7 @@ from async_upnp_client.aiohttp import AiohttpRequester, AiohttpNotifyServer
 from rich.text import Text
 from rich.live import Live
 
-from server import get_local_ip
+from .server import get_local_ip
 
 logger = logging.getLogger(__name__)
 
