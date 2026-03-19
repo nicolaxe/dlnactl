@@ -5,18 +5,20 @@ import asyncio
 import logging
 
 from async_upnp_client.profiles.dlna import DmrDevice, TransportState
-from async_upnp_client.client import UpnpDevice, UpnpService, UpnpStateVariable
+from async_upnp_client.client import UpnpDevice
 from async_upnp_client.aiohttp import AiohttpRequester, AiohttpNotifyServer
 from rich.text import Text
 from rich.live import Live
 
+from server import get_local_ip
+
 logger = logging.getLogger(__name__)
 
 class DLNADeviceWrapper:
-    def __init__(self, device: UpnpDevice, wait_task: asyncio.Event) -> None:
+    def __init__(self, device: UpnpDevice, wait_task: asyncio.Event, stop_on_quit: bool) -> None:
         # Set properties
         self.upnp_device: UpnpDevice = device
-
+        self.stop_on_quit: bool = stop_on_quit # Whether to stop playback after the program quits
         # self.state: str | None = None
         # self.muted: bool | None = None
         # self.volume: float | None = None
@@ -31,7 +33,7 @@ class DLNADeviceWrapper:
 
     async def start(self):
         # Start event server and subscribe to events
-        self.event_server = AiohttpNotifyServer(self.requester, ('192.168.50.235', 8090)) # TODO: This
+        self.event_server = AiohttpNotifyServer(self.requester, (get_local_ip(), 0))
         await self.event_server.async_start_server()
 
         self.device = DmrDevice(self.upnp_device, self.event_server.event_handler)
@@ -66,7 +68,9 @@ class DLNADeviceWrapper:
     async def play_media(self, url: str, name: str):
         if self.device is None:
             raise RuntimeError
-
+        
+        logger.info(f'Playing {url} on device')
+        await self.device.async_stop()
         await self.device.async_set_transport_uri(url, name)
         await self.device.async_wait_for_can_play()
         await self.device.async_play()
@@ -129,7 +133,9 @@ class DLNADeviceWrapper:
         try:
             while True:
                 ch = await loop.run_in_executor(None, sys.stdin.read, 1)
-                if (ch == 'q'):
+                if ch == 'q':
+                    if self.stop_on_quit:
+                        await self.device.async_stop()
                     await self.device.async_unsubscribe_services()
                     await self.event_server.async_stop_server()
                     self.wait_task.set()
@@ -156,12 +162,19 @@ class DLNADeviceWrapper:
             muted = 'UNKNOWN'
         else:
             muted = str(self.device.is_volume_muted)
+
+        if self.device.av_transport_uri:
+            source = self.device.av_transport_uri
+        else:
+            source = 'Unknown'
         
         help_text = 'Press q to quit, Space to play/pause, +/- to change volume (hold Shift to change by 10%) and m to mute'
-        return Text(f"Status: {state} \nVolume: {volume} \nMuted: {muted}\n{help_text}")
+        return Text(f"Status: {state} \nVolume: {volume} \nMuted: {muted}\nSource: {source}\n{help_text}")
 
     async def term_updater(self):
         with Live(self.render_status(), refresh_per_second=4) as live:
             while True:
                 live.update(self.render_status())
                 await asyncio.sleep(0.25)
+
+
