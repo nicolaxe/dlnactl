@@ -80,6 +80,7 @@ class DLNADeviceWrapper:
             raise RuntimeError
         
         if self.device.transport_state in [TransportState.PAUSED_PLAYBACK, TransportState.STOPPED]:
+            await self.device.async_wait_for_can_play()
             await self.device.async_play()
         else:
             await self.device.async_pause()
@@ -160,7 +161,10 @@ class DLNADeviceWrapper:
                         self.wait_task.set()
                         return
                     else:
-                        await self.handle_key(key.key)
+                        try:
+                            await self.handle_key(key.key)
+                        except Exception as error:
+                            logger.error(f'Failed to send command to device: {error}')
                 
                 await asyncio.sleep(0.05)
 
