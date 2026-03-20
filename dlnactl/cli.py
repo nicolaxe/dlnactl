@@ -88,8 +88,6 @@ async def handle_transcode(transcoder: Transcoder) -> Path|None:
     return await transcoder.transcode(Path(args.filename), args.transcode)
 
     
-    
-
 
 def check_arguments() -> bool:
     # Check argument validity, return True on error and False on Success
