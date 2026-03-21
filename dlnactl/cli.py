@@ -13,6 +13,7 @@ from .device import DLNADeviceWrapper
 from .server import DLNAServer
 from .transcode import CODEC_PARAMETERS, Transcoder
 from .playlist import load_playlist
+from .workarounds import MANUAL_REFRESH_DEVICES
 
 # Set up argument parsing
 parser = argparse.ArgumentParser(
@@ -25,6 +26,7 @@ parser.add_argument('-p', '--port', type=int, help='port to run the HTTP server 
 parser.add_argument('-d', '--device', type=str, help='name of the DLNA device to control. Required if there are multiple devices on the network')
 parser.add_argument('-t', '--transcode', type=str, choices=CODEC_PARAMETERS.keys(), help='If set program will first transcode file to desired format')
 parser.add_argument('--playlist', type=str, required=False, help='an m3u file to play on device')
+parser.add_argument('--force-manual-refresh', action='store_true', help='force manual refreshing of metadata. Enabled automaticly on known-bad devices')
 parser.add_argument('-v', '--verbose', action='store_true')
 
 parser.add_argument('--scan-devices', action='store_true', help='scan for DLNA renderer devices and exit')
@@ -47,20 +49,21 @@ logging.basicConfig(
 logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
 
-
-found_devices: list[tuple[str, CaseInsensitiveDict]] = []
+# Contains a list of found devices like this: device_name, device_info, bad_device
+# bad_device is an indicator that it needs workarounds
+found_devices: list[tuple[str, CaseInsensitiveDict, bool]] = []
 
 async def save_detected_device(arg: CaseInsensitiveDict, factory: UpnpFactory):
     try:
         device = await factory.async_create_device(arg['location'])
         if args.scan_devices:
             logger.info(f'Found device: "{device.name}" at {arg['location']}')
-        found_devices.append((device.name, arg))
+        found_devices.append((device.name, arg, device.model_name in MANUAL_REFRESH_DEVICES))
     except:
         logger.warning(f'Device {arg.get('X-ModelName')} failed to respond. Ignoring it')
 
 
-def select_device(name: str|None) -> CaseInsensitiveDict|None:
+def select_device(name: str|None) -> tuple[str, CaseInsensitiveDict, bool]|None:
     if not len(found_devices) > 0:
         logger.error('No DLNA devices found on local network')
         return None
@@ -68,7 +71,7 @@ def select_device(name: str|None) -> CaseInsensitiveDict|None:
     if name is None:
         if len(found_devices) == 1:
             logger.info(f'No device specified, using: "{found_devices[0][0]}"')
-            return found_devices[0][1]
+            return found_devices[0]
         else:
             logger.error('Multiple devices found and a name wasn\'t specified')
             return
@@ -76,7 +79,7 @@ def select_device(name: str|None) -> CaseInsensitiveDict|None:
     for device in found_devices:
         if device[0] == name:
             logger.info(f'Using device: {device[0]}')
-            return device[1]
+            return device
             
     logger.error(f'Device "{name}" not found')  
 
@@ -142,7 +145,10 @@ async def main_async():
         return
     
     # Connect device
-    dlna_device = DLNADeviceWrapper(await factory.async_create_device(selected_device['location']), wait_task, bool(args.filename))
+    bad_device = args.force_manual_refresh or selected_device[2]
+    if bad_device:
+        logger.warning('Using manual refresh for this device')
+    dlna_device = DLNADeviceWrapper(await factory.async_create_device(selected_device[1]['location']), wait_task, bool(args.filename), bad_device)
     await dlna_device.start()
 
     # If casting, cast

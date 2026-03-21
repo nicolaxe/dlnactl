@@ -17,10 +17,11 @@ from .server import get_local_ip
 logger = logging.getLogger(__name__)
 
 class DLNADeviceWrapper:
-    def __init__(self, device: UpnpDevice, wait_task: asyncio.Event, stop_on_quit: bool) -> None:
+    def __init__(self, device: UpnpDevice, wait_task: asyncio.Event, stop_on_quit: bool, manual_refresh: bool) -> None:
         # Set properties
         self.upnp_device: UpnpDevice = device
         self.stop_on_quit: bool = stop_on_quit # Whether to stop playback after the program quits
+        self.manual_refresh = manual_refresh
 
         self.device: DmrDevice|None = None
         self.wait_task: asyncio.Event = wait_task
@@ -29,6 +30,10 @@ class DLNADeviceWrapper:
 
         self.playlist: Sequence[str]|None = None
         self.playing_list: bool = False
+
+        # These are sometimes set manualy because DLNA implemenation vary
+        self.volume: float|None = None
+        self.muted: bool|None = None
 
     async def start(self):
         # Start event server and subscribe to events
@@ -44,6 +49,7 @@ class DLNADeviceWrapper:
 
         asyncio.create_task(self.key_listener())
         asyncio.create_task(self.term_updater())
+        asyncio.create_task(self.refresh_loop())
 
     async def play_media(self, url: str, name: str):
         if self.device is None:
@@ -69,13 +75,13 @@ class DLNADeviceWrapper:
         if self.device is None:
             raise RuntimeError
 
-        if self.device.volume_level is None:
+        if self.volume is None:
             logger.warning('Device doesn\'t seem to support setting the volume')
             return
         
-        new_volume = (int(self.device.volume_level * 100) + change) / 100 
-        # This is needed because the device sometimes responds with for example: 0.04999 (instead of 6)
-        # and then truncates 0.0599999 back down to 6
+        new_volume = (int(self.volume * 100) + change) / 100 
+        # This is needed because the device sometimes responds with for example: 0.04999 (instead of 5)
+        # and then truncates 0.0599999 back down to 5
 
         if new_volume < 0:
             new_volume = 0
@@ -92,7 +98,7 @@ class DLNADeviceWrapper:
             case ' ':
                 await self.play_pause()
             case 'm':
-                await self.device.async_mute_volume(not self.device.is_volume_muted)
+                await self.device.async_mute_volume(not self.muted)
             case '=':
                 await self.change_volume(1)
             case '-':
@@ -128,9 +134,7 @@ class DLNADeviceWrapper:
                             logger.error(f'Failed to send command to device: {error}')
                 
                 await asyncio.sleep(0.05)
-
-
-    def render_status(self):
+    def collect_info(self) -> list[str]:
         if self.device is None:
             raise RuntimeError
         
@@ -139,29 +143,40 @@ class DLNADeviceWrapper:
         else:
             state = self.device.transport_state.value
         
-        if self.device.volume_level is None:
+        if self.volume is None:
             volume = 'UNKNOWN'
         else:
-            volume = f'{int(self.device.volume_level * 100)}%'
+            volume = f'{int(self.volume * 100)}%'
 
-        if self.device.is_volume_muted is None:
+        if self.muted is None:
             muted = 'UNKNOWN'
         else:
-            muted = str(self.device.is_volume_muted)
+            muted = str(self.muted)
 
         if self.device.av_transport_uri:
             source = self.device.av_transport_uri
         else:
             source = 'Unknown'
 
+        return [state, volume, muted, source]
+
+    async def render_status(self):
+        if self.device is None:
+            raise RuntimeError
+        
+        info = self.collect_info()
+
         help_text = f'Press q to quit, Space to play/pause, +/- to change volume (hold Shift to change by 10%){', right/left arrows for Next/Previous' if self.playing_list else ''} and m to mute'
 
-        return Text(f"Status: {state} \nVolume: {volume} \nMuted: {muted}\nSource: {source}\n{help_text}")
+        return Text(f"Status: {info[0]} \nVolume: {info[1]} \nMuted: {info[2]}\nSource: {info[3]}\n{help_text}")
 
     async def term_updater(self):
-        with Live(self.render_status(), refresh_per_second=4) as live:
+        if self.device is None:
+            raise RuntimeError
+        
+        with Live(await self.render_status(), refresh_per_second=4) as live:
             while True:
-                live.update(self.render_status())
+                live.update(await self.render_status())
                 await asyncio.sleep(0.25)
 
     async def play_playlist(self, playlist: Sequence[str]):
@@ -211,7 +226,11 @@ class DLNADeviceWrapper:
             if index + 1 == len(self.playlist):
                 self.playing_list = False
                 return
-            await self.device.async_set_next_transport_uri(self.playlist[index + 1], 'Media')
+            if self.device.has_next_transport_uri:
+                await self.device.async_set_next_transport_uri(self.playlist[index + 1], 'Media')
+            else:
+                logger.warning('Device doesn\'t support setting next track. Playlists won\'t work right')
+                return
 
     async def move_in_list(self, change: int):
         if self.device is None:
@@ -228,7 +247,36 @@ class DLNADeviceWrapper:
         
         await self.play_media(self.playlist[index + change], 'Media')
 
+    async def manual_collect_info(self) -> tuple[float|None, bool|None]:
+        # Force update device info, because some device don't send notifications
+        if self.device is None:
+            raise RuntimeError
+        await self.device.async_update(do_ping=True)
+
+        service = self.device._service('RC')
+        if service is None:
+            return (None, None)
+        
+        volume: int = (await service.action("GetVolume").async_call(InstanceID=0, Channel="Master"))['CurrentVolume']
+        mute: bool = (await service.action("GetMute").async_call(InstanceID=0, Channel="Master"))['CurrentMute']
+        return (volume / 100, mute)
+    
+    async def refresh_loop(self):
+        if self.device is None:
+            raise RuntimeError
+        
+        while True:
+            if self.manual_refresh:
+                info = await self.manual_collect_info()
+                self.volume = info[0]
+                self.muted = info[1]
+            else:
+                self.volume = self.device.volume_level
+                self.muted = self.device.is_volume_muted
             
+            await asyncio.sleep(0.25)
+
+
 
 
         

@@ -56,6 +56,12 @@ dlnactl --playlist ~/Music/Favourites.m3u
 ```
 **Note: Playlist support is problematic with some DLNA devices. This program implements it's own system. For this reason on most devices the integrated Next and Previous buttons don't work. Use the controls in the program**
 
+If the volume or mute status don't seem to refresh correctly on your device you can try
+```
+dlnactl --force-manual-refresh
+```
+this polls the device explititly instead of relying on notifications
+
 ## TODO List
 - [ ] Config files
 - [x] Playlist support
