@@ -46,4 +46,16 @@ dlnactl -f song.opus -t mp3
 ```
 will transcode `song.opus` to mp3 and play it.
 
+You can also directly play a media file from a different serverby using the `-u` option
+```
+dlnactl -u example.com/song.mp3
+```
 
+## TODO List
+- [ ] Config files
+- [ ] Playlist support
+- [ ] Looping
+
+## Known Issues
+- Some devices require support for the HTTP `Range` header which aiohttp doesn't handle correctly
+- Sometimes a scan will fail to detect any devices, requiring a retry
