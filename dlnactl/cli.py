@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('-f', '--filename', type=str, help='media file to serve')
 parser.add_argument('-u', '--url', type=str, help='URL to play on device')
-parser.add_argument('-p', '--port', type=int, help='ort to run the HTTP server on. Random by default. Does nothing unless --filename is also set', required=False)
+parser.add_argument('-p', '--port', type=int, help='port to run the HTTP server on. Random by default. Does nothing unless --filename is also set', required=False)
 parser.add_argument('-d', '--device', type=str, help='name of the DLNA device to control. Required if there are multiple devices on the network')
 parser.add_argument('-t', '--transcode', type=str, choices=CODEC_PARAMETERS.keys(), help='If set program will first transcode file to desired format')
 parser.add_argument('-v', '--verbose', action='store_true')
