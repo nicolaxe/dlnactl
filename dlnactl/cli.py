@@ -141,7 +141,12 @@ async def main_async():
 
     # If casting, cast
     transcoder = Transcoder()
-    file = await handle_transcode(transcoder)
+    try:
+        file = await handle_transcode(transcoder)
+    except Exception as error:
+        logger.error(f'Transcoding failed with: {error}')
+        return
+    
     if file:
         if args.port:
             port = args.port
