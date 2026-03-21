@@ -60,5 +60,3 @@ class Transcoder:
         )
 
         await ffmpeg.execute()
-
-asyncio.run(Transcoder().transcode(Path('/tmp/in.webm'), 'mp3'))
