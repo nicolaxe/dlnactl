@@ -60,7 +60,7 @@ If the volume or mute status don't seem to refresh correctly on your device you 
 ```
 dlnactl --force-manual-refresh
 ```
-this polls the device explititly instead of relying on notifications
+this polls the device explicitly instead of relying on notifications
 
 ## TODO List
 - [ ] Config files
