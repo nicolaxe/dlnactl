@@ -48,14 +48,20 @@ will transcode `song.opus` to mp3 and play it.
 
 You can also directly play a media file from a different serverby using the `-u` option
 ```
-dlnactl -u example.com/song.mp3
+dlnactl -u http://example.com/song.mp3
 ```
+You can play playlists using the `--playlist` flag
+```
+dlnactl --playlist ~/Music/Favourites.m3u
+```
+**Note: Playlist support is problematic with some DLNA devices. This program implements it's own system. For this reason on most devices the integrated Next and Previous buttons don't work. Use the controls in the program**
 
 ## TODO List
 - [ ] Config files
-- [ ] Playlist support
+- [x] Playlist support
 - [ ] Looping
 
 ## Known Issues
 - Some devices require support for the HTTP `Range` header which aiohttp doesn't handle correctly
 - Sometimes a scan will fail to detect any devices, requiring a retry
+- Playlists are problematic

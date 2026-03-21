@@ -12,6 +12,7 @@ from pathlib import Path
 from .device import DLNADeviceWrapper
 from .server import DLNAServer
 from .transcode import CODEC_PARAMETERS, Transcoder
+from .playlist import load_playlist
 
 # Set up argument parsing
 parser = argparse.ArgumentParser(
@@ -23,6 +24,7 @@ parser.add_argument('-u', '--url', type=str, help='URL to play on device')
 parser.add_argument('-p', '--port', type=int, help='port to run the HTTP server on. Random by default. Does nothing unless --filename is also set', required=False)
 parser.add_argument('-d', '--device', type=str, help='name of the DLNA device to control. Required if there are multiple devices on the network')
 parser.add_argument('-t', '--transcode', type=str, choices=CODEC_PARAMETERS.keys(), help='If set program will first transcode file to desired format')
+parser.add_argument('--playlist', type=str, required=False, help='an m3u file to play on device')
 parser.add_argument('-v', '--verbose', action='store_true')
 
 parser.add_argument('--scan-devices', action='store_true', help='scan for DLNA renderer devices and exit')
@@ -69,6 +71,7 @@ def select_device(name: str|None) -> CaseInsensitiveDict|None:
             return found_devices[0][1]
         else:
             logger.error('Multiple devices found and a name wasn\'t specified')
+            return
     
     for device in found_devices:
         if device[0] == name:
@@ -94,6 +97,9 @@ def check_arguments() -> bool:
     if args.filename and args.url:
         logger.error('Cannot set both --filename and --url at once')
         return True
+    
+    if args.playlist and (args.url or args.filename):
+        logger.error('Can\'t set --playlist along with --filename or --url')
     
     if args.filename:
         if not Path(args.filename).exists():
@@ -152,11 +158,35 @@ async def main_async():
             port = args.port
         else:
             port = 0
-        dlna_server = DLNAServer(file, port)
+        dlna_server = DLNAServer({'/media': file}, port)
+        await dlna_server.start_server()
+        url = f'{dlna_server.get_url()}/media'
+        logger.info(f'Started HTTP server on {url}')
+        await dlna_device.play_media(url, 'Media')
+
+    if args.url:
+        await dlna_device.play_media(args.url, 'Media')
+
+    if args.playlist:
+        if args.port:
+            port = args.port
+        else:
+            port = 0
+        playlist = Path(args.playlist)
+        if not playlist.is_file():
+            logger.error('Playlist doesn\'t exist or is directory')
+        file_list = load_playlist(playlist)
+        dlna_server = DLNAServer(file_list, port)
         await dlna_server.start_server()
         url = dlna_server.get_url()
         logger.info(f'Started HTTP server on {url}')
-        await dlna_device.play_media(url, 'Media')
+
+        urls = []
+        for path in file_list.keys():
+            urls.append(url + path)
+        await dlna_device.play_playlist(urls)
+        
+
 
 
     await wait_task.wait()

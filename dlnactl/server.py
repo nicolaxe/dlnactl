@@ -1,7 +1,9 @@
 import socket
 import mimetypes
+import asyncio
 
 from aiohttp import web
+from aiohttp.web_request import Request
 from pathlib import Path
 
 def get_local_ip() -> str:
@@ -14,21 +16,25 @@ def get_local_ip() -> str:
 
 
 class DLNAServer:
-    def __init__(self, path: Path, port: int) -> None:
-        self.path = path
+    def __init__(self, paths: dict[str, Path], port: int) -> None:
+        self.paths: dict[str, Path] = paths
         self.port = port
         
-    async def _serve_file(self, request):
+    async def _serve_file(self, request: Request):
+        path = self.paths.get(request.path)
+        if path is None:
+            return web.Response(status=404)
         # For whatever reason aiohttp often fails to auto-detect the MIME type. I have to set it manually
-        content_type = mimetypes.guess_type(self.path)[0]
+        content_type = mimetypes.guess_type(path)[0]
         if content_type is None:
             content_type = 'application/octet-stream'
         headers = {'content-type': content_type}
-        return web.FileResponse(self.path, headers=headers)
+        return web.FileResponse(path, headers=headers)
 
     async def start_server(self):
         self.app = web.Application()
-        self.app.router.add_get("/media", self._serve_file)
+        for path in self.paths.keys():
+            self.app.router.add_get(path, self._serve_file)
 
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
@@ -40,5 +46,4 @@ class DLNAServer:
         port: int = self.site._server.sockets[0].getsockname()[1] # type: ignore
         # _server.sockets does exist, but only after site.start(). I don't know a better way to do this
         ip = get_local_ip()
-        return f'http://{ip}:{port}/media'
-
+        return f'http://{ip}:{port}'

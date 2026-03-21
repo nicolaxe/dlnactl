@@ -9,6 +9,8 @@ from async_upnp_client.client import UpnpDevice
 from async_upnp_client.aiohttp import AiohttpRequester, AiohttpNotifyServer
 from rich.text import Text
 from rich.live import Live
+from collections.abc import Sequence
+
 
 from .server import get_local_ip
 
@@ -19,17 +21,14 @@ class DLNADeviceWrapper:
         # Set properties
         self.upnp_device: UpnpDevice = device
         self.stop_on_quit: bool = stop_on_quit # Whether to stop playback after the program quits
-        # self.state: str | None = None
-        # self.muted: bool | None = None
-        # self.volume: float | None = None
 
-        #self.loop: asyncio.AbstractEventLoop = loop
         self.device: DmrDevice|None = None
         self.wait_task: asyncio.Event = wait_task
 
         self.requester = AiohttpRequester()
-        
-        
+
+        self.playlist: Sequence[str]|None = None
+        self.playing_list: bool = False
 
     async def start(self):
         # Start event server and subscribe to events
@@ -45,25 +44,6 @@ class DLNADeviceWrapper:
 
         asyncio.create_task(self.key_listener())
         asyncio.create_task(self.term_updater())
-
-    # def handle_transport_event(self, state: Sequence[UpnpStateVariable]):
-    #     for property in state:
-    #         if property.name == 'TransportState':
-    #             self.state = property.value
-
-    # def handle_rendering_event(self, state: Sequence[UpnpStateVariable]):
-    #     for property in state:
-    #         if property.name == 'Mute':
-    #             self.muted = property.value
-    #         elif property.name == 'Volume':
-    #             self.volume = property.value
-            
-
-    # def on_event(self, service: UpnpService, state: Sequence[UpnpStateVariable]):
-    #     if service.service_id == 'urn:upnp-org:serviceId:AVTransport':
-    #         self.handle_transport_event(state)
-    #     elif service.service_id == 'urn:upnp-org:serviceId:RenderingControl':
-    #         self.handle_rendering_event(state)
 
     async def play_media(self, url: str, name: str):
         if self.device is None:
@@ -104,7 +84,7 @@ class DLNADeviceWrapper:
 
         await self.device.async_set_volume_level(new_volume)
 
-    async def handle_key(self, key: str):
+    async def handle_key(self, key: str|Keys):
         if self.device is None:
             raise RuntimeError
         
@@ -121,29 +101,10 @@ class DLNADeviceWrapper:
                 await self.change_volume(10)
             case '_':
                 await self.change_volume(-10)
-
-    # async def key_listener(self):
-    #     if self.device is None:
-    #         raise RuntimeError
-    #     fd = sys.stdin.fileno()
-    #     old = termios.tcgetattr(fd)
-    #     tty.setcbreak(fd)
-
-    #     loop = asyncio.get_event_loop()
-
-    #     try:
-    #         while True:
-    #             ch = await loop.run_in_executor(None, sys.stdin.read, 1)
-    #             if ch == 'q':
-    #                 if self.stop_on_quit:
-    #                     await self.device.async_stop()
-    #                 await self.device.async_unsubscribe_services()
-    #                 await self.event_server.async_stop_server()
-    #                 self.wait_task.set()
-    #                 return
-    #             await self.handle_key(ch)
-    #     finally:
-    #         termios.tcsetattr(fd, termios.TCSADRAIN, old)
+            case Keys.Right:
+                await self.move_in_list(1)
+            case Keys.Left:
+                await self.move_in_list(-1)
 
     async def key_listener(self):
         if self.device is None:
@@ -169,8 +130,6 @@ class DLNADeviceWrapper:
                 await asyncio.sleep(0.05)
 
 
-
-
     def render_status(self):
         if self.device is None:
             raise RuntimeError
@@ -194,8 +153,9 @@ class DLNADeviceWrapper:
             source = self.device.av_transport_uri
         else:
             source = 'Unknown'
-        
-        help_text = 'Press q to quit, Space to play/pause, +/- to change volume (hold Shift to change by 10%) and m to mute'
+
+        help_text = f'Press q to quit, Space to play/pause, +/- to change volume (hold Shift to change by 10%){', right/left arrows for Next/Previous' if self.playing_list else ''} and m to mute'
+
         return Text(f"Status: {state} \nVolume: {volume} \nMuted: {muted}\nSource: {source}\n{help_text}")
 
     async def term_updater(self):
@@ -203,5 +163,76 @@ class DLNADeviceWrapper:
             while True:
                 live.update(self.render_status())
                 await asyncio.sleep(0.25)
+
+    async def play_playlist(self, playlist: Sequence[str]):
+        if self.device is None:
+            raise RuntimeError
+        
+        self.playlist = playlist
+        self.playing_list = True
+
+        if len(self.playlist) == 0:
+            return
+        elif len(self.playlist) == 1:
+            await self.play_media(playlist[0], 'Media')
+            return
+
+        await self.play_media(playlist[0], 'Media')
+        asyncio.create_task(self.playlist_loop())
+
+    async def get_playlist_pos(self) -> int|None:
+        if self.device is None:
+            raise RuntimeError
+        
+        if self.playlist is None:
+            return None
+        
+        track = self.device.av_transport_uri
+        if track is None:
+            return None
+        
+        if track not in self.playlist:
+            return None
+        
+        return self.playlist.index(track)
+    
+    async def playlist_loop(self):
+        if self.device is None:
+            raise RuntimeError
+        
+        if self.playlist is None:
+            raise RuntimeError
+        
+        while self.playing_list:
+            await asyncio.sleep(3)
+            index = await self.get_playlist_pos()
+            if index is None:
+                continue
+            if index + 1 == len(self.playlist):
+                self.playing_list = False
+                return
+            await self.device.async_set_next_transport_uri(self.playlist[index + 1], 'Media')
+
+    async def move_in_list(self, change: int):
+        if self.device is None:
+            raise RuntimeError
+        
+        index = await self.get_playlist_pos()
+        if index is None or self.playlist is None:
+            logger.warning('Not currently playing playlist')
+            return
+
+        if index + change >= len(self.playlist) or index + change < 0:
+            logger.info('Reached end of playlist')
+            return
+        
+        await self.play_media(self.playlist[index + change], 'Media')
+
+            
+
+
+        
+
+        
 
 
