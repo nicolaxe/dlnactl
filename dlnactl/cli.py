@@ -111,7 +111,7 @@ def check_arguments() -> bool:
             return True
         
     if not args.file and args.transcode:
-        logger.error('Cannot set --transcode without setting --file')
+        logger.error('Cannot set --transcode without setting file')
         return True
     
     if args.url and args.transcode:
