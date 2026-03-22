@@ -14,6 +14,7 @@ from .server import DLNAServer
 from .transcode import CODEC_PARAMETERS, Transcoder
 from .playlist import load_playlist
 from .workarounds import MANUAL_REFRESH_DEVICES
+from .display import StatusDisplay
 
 # Set up argument parsing
 parser = argparse.ArgumentParser(
@@ -150,6 +151,10 @@ async def main_async():
         logger.warning('Using manual refresh for this device')
     dlna_device = DLNADeviceWrapper(await factory.async_create_device(selected_device[1]['location']), wait_task, bool(args.filename), bad_device)
     await dlna_device.start()
+
+    # Create display
+    display = StatusDisplay(dlna_device)
+    await display.start()
 
     # If casting, cast
     transcoder = Transcoder()
