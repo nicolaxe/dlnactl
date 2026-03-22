@@ -34,15 +34,15 @@ Avaliable devices can be listed with
 ```
 dlnactl --scan-devices
 ```
-If a media file is passed with the `-f FILE` argument, the file will be served on an HTTP server. The port to use for the server can be specified with `-p PORT`, if the port isn't set it is selected by the OS.
+If a media file is passed as an argument argument, the file will be served on an HTTP server. The port to use for the server can be specified with `-p PORT`, if the port isn't set it is selected by the OS.
 ```
-dlnactl -f song.mp3 -p 8000 -d Tuner
+dlnactl song.mp3 -p 8000 -d Tuner
 ```
 will serve `song.mp3` on port 8000 and play it on "Tuner".
 
 If the device doesn't support certain media formats, the file can be transcoded with the `-t CODEC` option. This will transcode the file to the specific format (currently supported are: mp3, flac, wav, opus, vorbis), and serve it on the HTTP server.
 ```
-dlnactl -f song.opus -t mp3
+dlnactl song.opus -t mp3
 ```
 will transcode `song.opus` to mp3 and play it.
 

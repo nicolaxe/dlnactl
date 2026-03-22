@@ -21,9 +21,9 @@ parser = argparse.ArgumentParser(
                     prog='dlnactl',
                     description='A simple CLI DLNA remote/server')
 
-parser.add_argument('-f', '--filename', type=str, help='media file to serve')
+parser.add_argument('file', type=str, help='media file to serve', nargs='?')
 parser.add_argument('-u', '--url', type=str, help='URL to play on device')
-parser.add_argument('-p', '--port', type=int, help='port to run the HTTP server on. Random by default. Does nothing unless --filename is also set', required=False)
+parser.add_argument('-p', '--port', type=int, help='port to run the HTTP server on. Random by default. Does nothing unless a file is provided', required=False)
 parser.add_argument('-d', '--device', type=str, help='name of the DLNA device to control. Required if there are multiple devices on the network')
 parser.add_argument('-t', '--transcode', type=str, choices=CODEC_PARAMETERS.keys(), help='If set program will first transcode file to desired format')
 parser.add_argument('--playlist', type=str, required=False, help='an m3u file to play on device')
@@ -85,32 +85,32 @@ def select_device(name: str|None) -> tuple[str, CaseInsensitiveDict, bool]|None:
     logger.error(f'Device "{name}" not found')  
 
 async def handle_transcode(transcoder: Transcoder) -> Path|None:
-    if args.filename is None:
+    if args.file is None:
         return None
     
     if args.transcode is None:
-        return Path(args.filename)
+        return Path(args.file)
     
-    logger.info(f'Transcoding {args.filename} to {args.transcode}')
-    return await transcoder.transcode(Path(args.filename), args.transcode)
+    logger.info(f'Transcoding {args.file} to {args.transcode}')
+    return await transcoder.transcode(Path(args.file), args.transcode)
 
     
 
 def check_arguments() -> bool:
     # Check argument validity, return True on error and False on Success
-    if args.filename and args.url:
-        logger.error('Cannot set both --filename and --url at once')
+    if args.file and args.url:
+        logger.error('Cannot provide file and --url at once')
         return True
     
-    if args.playlist and (args.url or args.filename):
-        logger.error('Can\'t set --playlist along with --filename or --url')
+    if args.playlist and (args.url or args.file):
+        logger.error('Can\'t set --playlist along with a file or --url')
     
-    if args.filename:
-        if not Path(args.filename).exists():
-            logger.error(f'File "{args.filename}" doesn\'t exist')
+    if args.file:
+        if not Path(args.file).exists():
+            logger.error(f'File "{args.file}" doesn\'t exist')
             return True
         
-    if not args.filename and args.transcode:
+    if not args.file and args.transcode:
         logger.error('Cannot set --transcode without setting --file')
         return True
     
@@ -149,7 +149,7 @@ async def main_async():
     bad_device = args.force_manual_refresh or selected_device[2]
     if bad_device:
         logger.warning('Using manual refresh for this device')
-    dlna_device = DLNADeviceWrapper(await factory.async_create_device(selected_device[1]['location']), wait_task, bool(args.filename), bad_device)
+    dlna_device = DLNADeviceWrapper(await factory.async_create_device(selected_device[1]['location']), wait_task, bool(args.file), bad_device)
     await dlna_device.start()
 
     # Create display
