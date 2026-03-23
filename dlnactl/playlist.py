@@ -2,12 +2,12 @@ import logging
 
 from pathlib import Path
 
-from .transcode import get_file_hash
+from .transcode import get_file_hash, Transcoder
 
 logger = logging.getLogger(__name__)
 
 
-def load_playlist(playlist_path: Path, transcode: str|None = None) -> dict[str, Path]:
+async def load_playlist(playlist_path: Path, transcoder: tuple[Transcoder, str]|None = None) -> dict[str, Path]:
     logger.info('Loading playlist')
     elements: dict[str, Path] = {}
 
@@ -19,7 +19,11 @@ def load_playlist(playlist_path: Path, transcode: str|None = None) -> dict[str, 
     
     for path in paths:
         try:
-            elements[f'/media/{get_file_hash(path)}'] = path
+            if transcoder:
+                result = await  transcoder[0].transcode(path, transcoder[1])
+                elements[f'/media/{get_file_hash(path)}'] = result
+            else:
+                elements[f'/media/{get_file_hash(path)}'] = path
         except FileNotFoundError:
             logger.warning(f'File {path} not found. Skipping')
         

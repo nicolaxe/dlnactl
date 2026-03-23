@@ -186,7 +186,7 @@ async def main_async():
         playlist = Path(args.playlist)
         if not playlist.is_file():
             logger.error('Playlist doesn\'t exist or is directory')
-        file_list = load_playlist(playlist)
+        file_list = await load_playlist(playlist)
         dlna_server = DLNAServer(file_list, port)
         await dlna_server.start_server()
         url = dlna_server.get_url()
