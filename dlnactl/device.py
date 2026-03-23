@@ -14,14 +14,14 @@ logger = logging.getLogger(__name__)
 class DLNADeviceWrapper:
     def __init__(self, device: UpnpDevice, wait_task: asyncio.Event, stop_on_quit: bool, manual_refresh: bool) -> None:
         # Set properties
-        self.upnp_device: UpnpDevice = device
+        self._upnp_device: UpnpDevice = device
         self.stop_on_quit: bool = stop_on_quit # Whether to stop playback after the program quits
         self.manual_refresh = manual_refresh
 
         self._raw_device: DmrDevice|None = None # Preferably don't use this in other code
         self.wait_task: asyncio.Event = wait_task
 
-        self.requester = AiohttpRequester()
+        self._requester = AiohttpRequester()
 
         self.playlist: Sequence[str]|None = None
         self.playing_list: bool = False
@@ -32,10 +32,10 @@ class DLNADeviceWrapper:
 
     async def start(self):
         # Start event server and subscribe to events
-        self.event_server = AiohttpNotifyServer(self.requester, (get_local_ip(), 0))
+        self.event_server = AiohttpNotifyServer(self._requester, (get_local_ip(), 0))
         await self.event_server.async_start_server()
 
-        self._raw_device = DmrDevice(self.upnp_device, self.event_server.event_handler)
+        self._raw_device = DmrDevice(self._upnp_device, self.event_server.event_handler)
 
         # self.device.on_event = self.on_event
 
