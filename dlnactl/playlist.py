@@ -26,5 +26,7 @@ async def load_playlist(playlist_path: Path, transcoder: tuple[Transcoder, str]|
                 elements[f'/media/{get_file_hash(path)}'] = path
         except FileNotFoundError:
             logger.warning(f'File {path} not found. Skipping')
+        except Exception as error:
+            logger.error(f'Transcoding file {path} failed with: {error}')
         
     return elements
