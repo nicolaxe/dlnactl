@@ -35,7 +35,7 @@ Avaliable devices can be listed with
 ```
 dlnactl --scan-devices
 ```
-If a media file is passed as an argument argument, the file will be served on an HTTP server. The port to use for the server can be specified with `-p PORT`, if the port isn't set it is selected by the OS.
+If a media file is passed as an argument, the file will be served on an HTTP server. The port to use for the server can be specified with `-p PORT`, if the port isn't set, it is selected by the OS.
 ```
 dlnactl song.mp3 -p 8000 -d Tuner
 ```
@@ -47,15 +47,16 @@ dlnactl song.opus -t mp3
 ```
 will transcode `song.opus` to mp3 and play it.
 
-You can also directly play a media file from a different serverby using the `-u` option
+You can also directly play a media file from a different server by using the `-u` option
 ```
 dlnactl -u http://example.com/song.mp3
 ```
+
 You can play playlists using the `--playlist` flag
 ```
 dlnactl --playlist ~/Music/Favourites.m3u
 ```
-**Note: Playlist support is problematic with some DLNA devices. This program implements it's own system. For this reason on most devices the integrated Next and Previous buttons don't work. Use the controls in the program**
+**Note: Playlist support is problematic with some DLNA devices. This program implements it's own system. For this reason on most devices the integrated Next and Previous buttons won't work. Use the controls in the program**
 
 If the volume or mute status don't seem to refresh correctly on your device you can try
 ```
