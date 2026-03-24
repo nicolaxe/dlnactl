@@ -110,7 +110,7 @@ def check_arguments() -> bool:
             logger.error(f'File "{args.file}" doesn\'t exist')
             return True
         
-    if not args.file and args.transcode:
+    if not args.file and args.transcode and not args.playlist:
         logger.error('Cannot set --transcode without setting file')
         return True
     
