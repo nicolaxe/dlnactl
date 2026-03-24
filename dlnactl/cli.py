@@ -91,7 +91,7 @@ async def handle_transcode(transcoder: Transcoder) -> Path|None:
     if args.transcode is None:
         return Path(args.file)
     
-    logger.info(f'Transcoding {args.file} to {args.transcode}')
+    logger.info(f'Transcoding "{args.file}" to {args.transcode}')
     return await transcoder.transcode(Path(args.file), args.transcode)
 
     
