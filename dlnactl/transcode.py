@@ -11,7 +11,7 @@ CODEC_PARAMETERS : dict[str, tuple[str, str, int|None]]= {
     'opus': ('libopus', 'opus', 192),
     'flac': ('flac', 'flac', None),
     'vorbis': ('libvorbis', 'ogg', 256),
-    'wav': ('pcm_f16le', 'wav', None)
+    'wav': ('pcm_s16le', 'wav', None)
 }
 
 def get_file_hash(file_path: Path) -> str:
