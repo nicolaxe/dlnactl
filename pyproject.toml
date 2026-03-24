@@ -1,7 +1,7 @@
 [project]
 name = "dlnactl"
 version = "0.1.0"
-description = "Add your description here"
+description = "A CLI tool for controlling and playing media on DLNA devices."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
