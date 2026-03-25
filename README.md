@@ -70,6 +70,6 @@ this polls the device explicitly instead of relying on notifications
 - [ ] Looping
 
 ## Known Issues
-- Some devices require support for the HTTP `Range` header which aiohttp doesn't handle correctly
+- aiohttp doesn't always seem to handle http `Range` headers correctly
 - Sometimes a scan will fail to detect any devices, requiring a retry
 - Playlists are problematic
