@@ -28,6 +28,7 @@ parser.add_argument('-d', '--device', type=str, help='name of the DLNA device to
 parser.add_argument('-t', '--transcode', type=str, choices=CODEC_PARAMETERS.keys(), help='If set program will first transcode file to desired format')
 parser.add_argument('--playlist', type=str, required=False, help='an m3u file to play on device')
 parser.add_argument('--force-manual-refresh', action='store_true', help='force manual refreshing of metadata. Enabled automaticly on known-bad devices')
+parser.add_argument('--enable-strict', action='store_true', help='enable strict validation of data from the device. This breaks a lot of devices')
 parser.add_argument('-v', '--verbose', action='store_true')
 
 parser.add_argument('--scan-devices', action='store_true', help='scan for DLNA renderer devices and exit')
@@ -130,7 +131,7 @@ async def main_async():
     logger.info('Scanning for devices')
     
     requester = AiohttpRequester()
-    factory = UpnpFactory(requester, non_strict=True)
+    factory = UpnpFactory(requester, non_strict=not args.enable_strict)
 
     await upnp_search.async_search(
         lambda arg: save_detected_device(arg, factory),
