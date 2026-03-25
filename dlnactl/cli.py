@@ -130,7 +130,7 @@ async def main_async():
     logger.info('Scanning for devices')
     
     requester = AiohttpRequester()
-    factory = UpnpFactory(requester)
+    factory = UpnpFactory(requester, non_strict=True)
 
     await upnp_search.async_search(
         lambda arg: save_detected_device(arg, factory),
