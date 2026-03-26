@@ -150,7 +150,15 @@ async def main_async():
     bad_device = args.force_manual_refresh or selected_device[2]
     if bad_device:
         logger.warning('Using manual refresh for this device')
-    dlna_device = DLNADeviceWrapper(await factory.async_create_device(selected_device[1]['location']), wait_task, bool(args.file), bad_device)
+    
+    stop_on_quit = bool(args.playlist) or bool(args.file)
+    dlna_device = DLNADeviceWrapper(
+        await factory.async_create_device(selected_device[1]['location']), 
+        wait_task, 
+        stop_on_quit, 
+        bad_device
+    )
+    
     await dlna_device.start()
 
     # Create display

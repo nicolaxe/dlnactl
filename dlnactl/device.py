@@ -223,6 +223,8 @@ class DLNADeviceWrapper:
             raise RuntimeError
         await self._raw_device.async_unsubscribe_services()
         await self.event_server.async_stop_server()
+        if self.stop_on_quit:
+            await self._raw_device.async_stop()
 
 
 
