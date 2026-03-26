@@ -211,6 +211,20 @@ class DLNADeviceWrapper:
             raise RuntimeError
         
         return self._raw_device.av_transport_uri
+    
+    @property
+    def media_position(self):
+        if self._raw_device is None:
+            raise RuntimeError
+        
+        return self._raw_device.media_position
+    
+    @property
+    def media_duration(self):
+        if self._raw_device is None:
+            raise RuntimeError
+        
+        return self._raw_device.media_duration
         
     async def toggle_mute(self):
         if self._raw_device is None:

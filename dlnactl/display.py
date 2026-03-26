@@ -10,6 +10,16 @@ from .device import DLNADeviceWrapper
 
 logger = logging.getLogger(__name__)
 
+def convert_time(time: int) -> str:
+    # Convert time in seconds to "HH:MM:SS"
+    hours = time // 3600
+    time = time % 3600
+    minutes = time // 60
+    seconds = time % 60
+
+    return f'{str(hours).zfill(2)}:{str(minutes).zfill(2)}:{str(seconds).zfill(2)}'
+
+
 class StatusDisplay:
     def __init__(self, device_wrapper: DLNADeviceWrapper) -> None:
         self.device: DLNADeviceWrapper = device_wrapper
@@ -62,7 +72,12 @@ class StatusDisplay:
 
         help_text = f'Press q to quit, Space to play/pause, +/- to change volume (hold Shift to change by 10%){', right/left arrows for Next/Previous' if self.device.playing_list else ''} and m to mute'
 
-        return Text(f"Status: {info[0]} \nVolume: {info[1]} \nMuted: {info[2]}\nSource: {info[3]}\n{help_text}")
+        return Text(f'''Status: {info[0]} 
+Volume: {info[1]} 
+Muted: {info[2]}
+Source: {info[3]}
+Position: {info[5]}/{info[4]}
+{help_text}''') # This is very ugly, but better then a single line with a bilion \n
 
     async def term_updater(self):
         with Live(await self.render_status(), refresh_per_second=4) as live:
@@ -91,5 +106,16 @@ class StatusDisplay:
         else:
             source = 'Unknown'
 
-        return [state, volume, muted, source]
+        if self.device.media_duration is None:
+            duration = 'Unknown'
+        else:
+            duration = convert_time(self.device.media_duration)
+
+        if self.device.media_position is None:
+            position = 'Unknown'
+        else:
+            position = convert_time(self.device.media_position)
+
+
+        return [state, volume, muted, source, duration, position]
         
