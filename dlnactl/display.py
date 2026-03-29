@@ -55,6 +55,9 @@ class StatusDisplay:
             case '<':
                 await self.device.seek_rel(-100)
 
+        if key in '0123456789':
+            await self.seek_to_tenth(int(key))
+
     async def key_listener(self):
         inp = create_input()
 
@@ -78,7 +81,7 @@ class StatusDisplay:
     async def render_status(self):
         info = self.collect_info()
 
-        help_text = f'Press q to quit, Space to play/pause, +/- to change volume (hold Shift to change by 10%){', right/left arrows for Next/Previous' if self.device.playing_list else ''} and m to mute'
+        help_text = f'''Press q to quit, Space to play/pause, +/- to change volume (hold Shift to change by 10%), </> to seek +-10s (hold shift for 100s), 0-9 for absolute seek{', right/left arrows for Next/Previous' if self.device.playing_list else ''} and m to mute'''
 
         return Text(f'''Status: {info[0]} 
 Volume: {info[1]} 
@@ -126,4 +129,17 @@ Position: {info[5]}/{info[4]}
 
 
         return [state, volume, muted, source, duration, position]
+    
+    async def seek_to_tenth(self, number: int):
+        if not (9 >= number >= 0):
+            raise ValueError('Number has to be between 0 and 9')
+        
+        duration = self.device.media_duration
+        if duration is None or duration == 0:
+            logger.error('Unable to seek, because reported media duration is unknown')
+            return
+
+        position = (duration / 10) * number
+
+        await self.device.seek_abs(position)
         
