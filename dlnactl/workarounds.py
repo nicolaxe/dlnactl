@@ -52,7 +52,14 @@ except ImportError:
 
 
 
-# This is a list of devices that require manual status refreshing
-MANUAL_REFRESH_DEVICES = [
-    'JBL BAR 500'
-]
+# This is a list of which workarounds are needed for what devices
+DEVICE_LIST: dict[str, dict[str, bool]] = {
+    'JBL BAR 500': {'manual_refresh': True, 'always_abs_seek': True, 'rel_seek_is_abs': True},
+    'TX-NR737': {'manual_refresh': True, 'always_abs_seek': True, 'rel_seek_is_abs': False},
+    'default': {'manual_refresh': False, 'always_abs_seek': True, 'rel_seek_is_abs': False} 
+    # Use absolute seek by dafault because relative seek is a mess
+}
+
+# manual_refresh: Request status updates from device instead of relying on notifications
+# always_abs_seek: Always use absolute seeking
+# rel_seek_is_abs: Send relative seek commands when doing absolute seeking

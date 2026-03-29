@@ -13,7 +13,7 @@ from .device import DLNADeviceWrapper
 from .server import DLNAServer
 from .transcode import CODEC_PARAMETERS, Transcoder
 from .playlist import load_playlist
-from .workarounds import MANUAL_REFRESH_DEVICES
+from .workarounds import DEVICE_LIST
 from .display import StatusDisplay
 
 # Set up argument parsing
@@ -51,21 +51,24 @@ logging.basicConfig(
 logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
 
-# Contains a list of found devices like this: device_name, device_info, bad_device
-# bad_device is an indicator that it needs workarounds
-found_devices: list[tuple[str, CaseInsensitiveDict, bool]] = []
+# Contains a list of found devices like this: device_name, device_info, workarounds
+found_devices: list[tuple[str, CaseInsensitiveDict, dict[str, bool]]] = []
 
 async def save_detected_device(arg: CaseInsensitiveDict, factory: UpnpFactory):
     try:
         device = await factory.async_create_device(arg['location'])
         if args.scan_devices:
-            logger.info(f'Found device: "{device.name}" at {arg['location']}')
-        found_devices.append((device.name, arg, device.model_name in MANUAL_REFRESH_DEVICES))
+            logger.info(f'Found device: "{device.name}" at {arg['location']} with model "{device.model_name}"')
+        if device.model_name in DEVICE_LIST:
+            workarounds = DEVICE_LIST[device.model_name]
+        else:
+            workarounds = DEVICE_LIST['default']
+        found_devices.append((device.name, arg, workarounds))
     except:
         logger.warning(f'Device {arg.get('X-ModelName')} failed to respond. Ignoring it')
 
 
-def select_device(name: str|None) -> tuple[str, CaseInsensitiveDict, bool]|None:
+def select_device(name: str|None) -> tuple[str, CaseInsensitiveDict, dict[str, bool]]|None:
     if not len(found_devices) > 0:
         logger.error('No DLNA devices found on local network')
         return None
@@ -147,16 +150,17 @@ async def main_async():
         return
     
     # Connect device
-    bad_device = args.force_manual_refresh or selected_device[2]
-    if bad_device:
-        logger.warning('Using manual refresh for this device')
-    
+    workarounds =  selected_device[2]
+    if args.force_manual_refresh:
+        workarounds['manual_refresh'] = True
+    logger.info(f'Active workarounds: {workarounds}')
+
     stop_on_quit = bool(args.playlist) or bool(args.file)
     dlna_device = DLNADeviceWrapper(
         await factory.async_create_device(selected_device[1]['location']), 
         wait_task, 
         stop_on_quit, 
-        bad_device
+        workarounds
     )
     
     await dlna_device.start()

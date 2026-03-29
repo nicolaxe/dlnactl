@@ -46,6 +46,14 @@ class StatusDisplay:
                 await self.device.move_in_list(1)
             case Keys.Left:
                 await self.device.move_in_list(-1)
+            case '.':
+                await self.device.seek_rel(10)
+            case ',':
+                await self.device.seek_rel(-10)
+            case '>':
+                await self.device.seek_rel(100)
+            case '<':
+                await self.device.seek_rel(-100)
 
     async def key_listener(self):
         inp = create_input()

@@ -1,5 +1,4 @@
 import tempfile
-import asyncio
 import hashlib
 
 from ffmpeg.asyncio import FFmpeg
@@ -25,7 +24,7 @@ def get_file_hash(file_path: Path) -> str:
 
 class Transcoder:
     def __init__(self):
-        self.tempdir = tempfile.TemporaryDirectory()
+        self.tempdir = tempfile.TemporaryDirectory(prefix='dlnactl_')
 
     async def transcode(self, input: Path, codec: str) -> Path:
         if codec not in CODEC_PARAMETERS.keys():
