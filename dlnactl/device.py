@@ -250,8 +250,13 @@ class DLNADeviceWrapper:
             raise RuntimeError
         
         
-        if not self._raw_device.has_seek_abs_time or not self._raw_device.can_seek_abs_time:
-            logger.error('Device claims it doesn\'t support seeking. This may or may not be true')
+        if not self._raw_device.has_seek_abs_time:
+            if self.workarounds['rel_seek_is_abs']:
+                if not self._raw_device.has_seek_rel_time:
+                    logger.error('Device claims it doesn\'t support seeking. This may or may not be true')
+
+            else:
+                logger.error('Device claims it doesn\'t support seeking. This may or may not be true')
             
         
         delta = timedelta(seconds=pos)
