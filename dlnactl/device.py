@@ -125,6 +125,10 @@ class DLNADeviceWrapper:
         if self.playlist is None:
             raise RuntimeError
         
+        if not self._raw_device.has_next_transport_uri:
+            logger.warning('Device doesn\'t support setting next track. Playlists will be janky')
+
+        
         while self.playing_list:
             await asyncio.sleep(3)
             index = await self.get_playlist_pos()
@@ -135,9 +139,12 @@ class DLNADeviceWrapper:
                 return
             if self._raw_device.has_next_transport_uri:
                 await self._raw_device.async_set_next_transport_uri(self.playlist[index + 1], 'Media')
-            else:
-                logger.warning('Device doesn\'t support setting next track. Playlists won\'t work right')
-                return
+            else:  
+                #logger.warning('Using manual playlist movement. This will be janky')
+                if self._raw_device.transport_state == TransportState.STOPPED:
+                    await self.move_in_list(1)
+                
+
 
     async def move_in_list(self, change: int):
         if self._raw_device is None:
