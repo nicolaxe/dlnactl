@@ -1,6 +1,6 @@
 import socket
 import mimetypes
-import asyncio
+import magic
 
 from aiohttp import web
 from aiohttp.web_request import Request
@@ -25,9 +25,13 @@ class DLNAServer:
         if path is None:
             return web.Response(status=404)
         # For whatever reason aiohttp often fails to auto-detect the MIME type. I have to set it manually
-        content_type = mimetypes.guess_type(path)[0]
-        if content_type is None:
-            content_type = 'application/octet-stream'
+        content_type = magic.from_file(path, mime=True)
+        
+        if content_type == 'application/octet-stream':
+            content_type = mimetypes.guess_type(path)[0]
+            if content_type is None:
+                content_type = 'application/octet-stream'
+
         headers = {'content-type': content_type}
         return web.FileResponse(path, headers=headers)
 

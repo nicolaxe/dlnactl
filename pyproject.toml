@@ -8,6 +8,7 @@ dependencies = [
     "async-upnp-client>=0.46.2",
     "prompt-toolkit>=3.0.52",
     "python-ffmpeg>=2.0.12",
+    "python-magic>=0.4.27",
     "rich>=14.3.3",
 ]
 
