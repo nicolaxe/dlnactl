@@ -200,7 +200,12 @@ async def main_async():
         if not playlist.is_file():
             logger.error('Playlist doesn\'t exist or is directory')
             return
-        file_list = await load_playlist(playlist, (transcoder, args.transcode) if args.transcode else None)
+        try:
+            file_list = await load_playlist(playlist, (transcoder, args.transcode) if args.transcode else None)
+        except Exception as error:
+            logger.error(f'Failed to load playlist: {error}')
+            return
+        
         dlna_server = DLNAServer(file_list, port)
         await dlna_server.start_server()
         url = dlna_server.get_url()

@@ -1,10 +1,13 @@
 import socket
 import mimetypes
 import magic
+import logging
 
 from aiohttp import web
 from aiohttp.web_request import Request
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 def get_local_ip() -> str:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -28,6 +31,7 @@ class DLNAServer:
         content_type = magic.from_file(path, mime=True)
         
         if content_type == 'application/octet-stream':
+            logger.warning(f'Unable to determine filetype of "{path}". Using the file extension')
             content_type = mimetypes.guess_type(path)[0]
             if content_type is None:
                 content_type = 'application/octet-stream'
