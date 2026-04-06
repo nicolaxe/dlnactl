@@ -20,4 +20,4 @@ dependencies = [
 dlnactl = "dlnactl.cli:main"
 
 [tool.setuptools.package-data]
-mypkg = ["devices.toml"]
+dlnactl = ["devices.toml"]

@@ -65,7 +65,7 @@ except ImportError:
 #     # Use absolute seek by dafault because relative seek is a mess
 # }
 
-_devices_file = (files(__package__) / "devices.toml").read_text()
+_devices_file = (files(__package__) / 'devices.toml').read_text()
 _toml_data = tomllib.loads(_devices_file)
 
 @dataclass
