@@ -1,4 +1,9 @@
 import re
+import tomllib
+
+from dataclasses import dataclass
+from importlib.resources import files
+
 
 # This file contains workarounds from bad DLNA impementations
 # Currently there's 2, both for some JBL devices
@@ -52,14 +57,47 @@ except ImportError:
 
 
 
-# This is a list of which workarounds are needed for what devices
-DEVICE_LIST: dict[str, dict[str, bool]] = {
-    'JBL BAR 500': {'manual_refresh': True, 'always_abs_seek': True, 'rel_seek_is_abs': True},
-    'TX-NR737': {'manual_refresh': True, 'always_abs_seek': True, 'rel_seek_is_abs': False},
-    'default': {'manual_refresh': False, 'always_abs_seek': True, 'rel_seek_is_abs': False} 
-    # Use absolute seek by dafault because relative seek is a mess
-}
+# # This is a list of which workarounds are needed for what devices
+# DEVICE_LIST: dict[str, dict[str, bool]] = {
+#     'JBL BAR 500': {'manual_refresh': True, 'always_abs_seek': True, 'rel_seek_is_abs': True},
+#     'TX-NR737': {'manual_refresh': True, 'always_abs_seek': True, 'rel_seek_is_abs': False},
+#     'default': {'manual_refresh': False, 'always_abs_seek': True, 'rel_seek_is_abs': False} 
+#     # Use absolute seek by dafault because relative seek is a mess
+# }
 
-# manual_refresh: Request status updates from device instead of relying on notifications
-# always_abs_seek: Always use absolute seeking
-# rel_seek_is_abs: Send relative seek commands when doing absolute seeking
+_devices_file = (files(__package__) / "devices.toml").read_text()
+_toml_data = tomllib.loads(_devices_file)
+
+@dataclass
+class DeviceSpec:
+    name: str # Name of device model
+    manual_refresh: bool # Request status updates from device instead of relying on notifications
+    always_abs_seek: bool # Always use absolute seeking
+    rel_seek_is_abs: bool # Send relative seek commands when doing absolute seeking
+
+
+def _merge_configs(original: dict, override: dict):
+    for key, value in override.items():
+        if isinstance(value, dict) and key in original:
+            _merge_configs(original[key], value)
+        else:
+            original[key] = value
+
+def load_device_specs(model_name: str) -> DeviceSpec:
+    
+    
+    device_details = None
+    default_options = _toml_data['default'].copy()
+
+    for key in _toml_data.keys():
+        if _toml_data[key]['name'] == model_name:
+            device_details = _toml_data[key].copy()
+            break
+
+    if device_details is not None:
+        _merge_configs(default_options, device_details)
+
+    return DeviceSpec(**default_options)
+
+KNOWN_DEVICES = _toml_data.keys()
+        

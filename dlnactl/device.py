@@ -9,15 +9,16 @@ from collections.abc import Sequence
 from datetime import timedelta
 
 from .server import get_local_ip
+from .workarounds import DeviceSpec
 
 logger = logging.getLogger(__name__)
 
 class DLNADeviceWrapper:
-    def __init__(self, device: UpnpDevice, wait_task: asyncio.Event, stop_on_quit: bool, workarounds: dict[str, bool]) -> None:
+    def __init__(self, device: UpnpDevice, wait_task: asyncio.Event, stop_on_quit: bool, workarounds: DeviceSpec) -> None:
         # Set properties
         self._upnp_device: UpnpDevice = device
         self.stop_on_quit: bool = stop_on_quit # Whether to stop playback after the program quits
-        self.workarounds: dict[str, bool] = workarounds
+        self.workarounds: DeviceSpec = workarounds
 
         self._raw_device: DmrDevice|None = None # Preferably don't use this in other code
         self.wait_task: asyncio.Event = wait_task
@@ -45,7 +46,7 @@ class DLNADeviceWrapper:
 
         #asyncio.create_task(self.key_listener())
         #asyncio.create_task(self.term_updater())
-        if self.workarounds['manual_refresh']:
+        if self.workarounds.manual_refresh:
             asyncio.create_task(self.refresh_loop())
 
     async def play_media(self, url: str, name: str):
@@ -196,7 +197,7 @@ class DLNADeviceWrapper:
         if self._raw_device is None:
             raise RuntimeError
         
-        if self.workarounds['manual_refresh']:
+        if self.workarounds.manual_refresh:
             return self._stored_volume
         else:
             return self._raw_device.volume_level
@@ -206,7 +207,7 @@ class DLNADeviceWrapper:
         if self._raw_device is None:
             raise RuntimeError
         
-        if self.workarounds['manual_refresh']:
+        if self.workarounds.manual_refresh:
             return self._stored_muted
         else:
             return self._raw_device.is_volume_muted
@@ -251,7 +252,7 @@ class DLNADeviceWrapper:
         
         
         if not self._raw_device.has_seek_abs_time:
-            if self.workarounds['rel_seek_is_abs']:
+            if self.workarounds.rel_seek_is_abs:
                 if not self._raw_device.has_seek_rel_time:
                     logger.error('Device claims it doesn\'t support seeking. This may or may not be true')
 
@@ -261,7 +262,7 @@ class DLNADeviceWrapper:
         
         delta = timedelta(seconds=pos)
         try:
-            if self.workarounds['rel_seek_is_abs']: # In some devices ABS_TIME doesn't work, but REL_TIME does absolute seeking
+            if self.workarounds.rel_seek_is_abs: # In some devices ABS_TIME doesn't work, but REL_TIME does absolute seeking
                 await self._raw_device.async_seek_rel_time(delta)
             else:
                 await self._raw_device.async_seek_abs_time(delta)
@@ -272,7 +273,7 @@ class DLNADeviceWrapper:
         if self._raw_device is None:
             raise RuntimeError
         
-        if self.workarounds['always_abs_seek']:
+        if self.workarounds.always_abs_seek:
             if self.media_position is None:
                 logger.error('Unable to do relative seeking because media position in unknown')
                 return
