@@ -14,3 +14,6 @@ dependencies = [
 
 [project.scripts]
 dlnactl = "dlnactl.cli:main"
+
+[tool.setuptools.package-data]
+mypkg = ["devices.toml"]
