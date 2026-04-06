@@ -1,10 +1,3 @@
-# DEVICE_LIST: dict[str, dict[str, bool]] = {
-#     'JBL BAR 500': {'manual_refresh': True, 'always_abs_seek': True, 'rel_seek_is_abs': True},
-#     'TX-NR737': {'manual_refresh': True, 'always_abs_seek': True, 'rel_seek_is_abs': False},
-#     'default': {'manual_refresh': False, 'always_abs_seek': True, 'rel_seek_is_abs': False} 
-#    
-# }
-
 [default]
 name = 'default'
 manual_refresh = false
@@ -17,7 +10,7 @@ name = 'JBL BAR 500'
 manual_refresh = true
 rel_seek_is_abs = true
 
-[TX-NR737]
+[Onkyo_TX-NR737]
 name = 'TX-NR737'
 manual_refresh = true
 
